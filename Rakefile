@@ -60,8 +60,8 @@ namespace(:db) do
 		with_rescue {
 			configuration = send("#{ENV["DB_CONFIG"]}_db_config")
 			configuration.each { |env,config|
-				password = config["password"] rescue nil
-				password = " -p#{password}" unless password.nil?
+				password = config["password"].strip rescue ""
+				password = " -p#{password}" unless password.empty?
 				system("mysqladmin --user=#{config["username"]}#{password} -f drop #{config["database"]}", out: $stdout, err: :out)
 			}
 		}
@@ -72,8 +72,8 @@ namespace(:db) do
 		with_rescue {
 			configuration = send("#{ENV["DB_CONFIG"]}_db_config")
 			configuration.each { |env,config|
-				password = config["password"] rescue nil
-				password = " -p#{password}" unless password.nil?
+				password = config["password"].strip rescue ""
+				password = " -p#{password}" unless password.empty?
 				system("mysql --user=#{config["username"]}#{password} -e 'create DATABASE #{config["database"]} DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci '", out: $stdout, err: :out)
 			}
 		}
