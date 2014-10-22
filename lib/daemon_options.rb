@@ -14,12 +14,13 @@ module DaemonOptions
     db = YAML.load(ERB.new(File.read(PATH_TO_TRACKER_DB_YAML)).result)[$env]
     ActiveRecord::Base.establish_connection(db)
     Dir[PATH_TO_TRACKER_MODELS].each {|file| require file }
-    puts User.all.count
     true
   end
 
   def connect_to_current
-    puts "Connected to current"
+    @current_conn = EM::Synchrony::ConnectionPool.new(:size => CONNECTION_POOL_SIZE) do
+      ::Mysql2::EM::Client.new(YAML.load(File.read(PATH_TO_CURRENT_DB_YAML))[$env])
+    end
     true
   end
 

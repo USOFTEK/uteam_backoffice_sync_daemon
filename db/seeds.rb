@@ -6,7 +6,7 @@ require "digest/md5"
 # Insert user
 puts "Creating a user"
 user_created_at = Faker::Date.between(rand(366).days.ago, Date.today)
-DB.query("INSERT INTO `users` SET `id`='#{Faker::Internet.user_name}', `credit`='#{Faker::Commerce.price}', `registration`=CURDATE() - INTERVAL 1 MONTH, `password`='#{Faker::Internet.password}', `disable`=#{[0,1].sample}")
+DB.query("INSERT INTO `users` SET `id`='#{Faker::Internet.user_name}', `credit`='#{Faker::Commerce.price}', `registration`=CURDATE() - INTERVAL 1 MONTH, `password`='#{123456}', `disable`=#{[0,1].sample}")
 # Retrieve last inserted user id
 USER_ID = DB.last_id
 # Create billing for user

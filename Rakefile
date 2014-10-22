@@ -7,12 +7,15 @@ require "faker"
 require "active_support/all"
 require "database_cleaner"
 
+require_relative "config/config"
+
 # helpers
 def copy_billing_db_config
   YAML.load(ERB.new(File.read("#{File.dirname(__FILE__)}/config/database_cb.yml")).result)
 end
+
 def tracker_db_config
-	YAML.load(ERB.new(File.read("#{File.dirname(__FILE__)}/config/database_tracker.yml")).result)
+	YAML.load(ERB.new(File.read(PATH_TO_TRACKER_DB_YAML)).result)
 end
 
 def with_rescue &block

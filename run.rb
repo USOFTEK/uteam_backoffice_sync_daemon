@@ -5,6 +5,7 @@ require "em-synchrony"
 require "em-synchrony/activerecord"
 require "em-http-request"
 require "active_support/all"
+require 'em-synchrony/mysql2'
 
 $env = "development"
 

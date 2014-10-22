@@ -153,10 +153,12 @@ PLATFORMS
 
 DEPENDENCIES
   activerecord
+  activesupport
   bcrypt
   database_cleaner
   em-http-request
   em-synchrony!
+  eventmachine
   factory_girl
   faker
   goliath

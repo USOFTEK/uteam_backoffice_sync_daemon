@@ -1,13 +1,121 @@
 require_relative "daemon_options"
+require "date"
 
 module Daemon
   extend DaemonOptions
 
   def self.archive_db db_name = nil
-    system "mysqldump -u#{SQL_USER} -p#{SQL_PASS} #{CURRENT_DB_NAME} > dumps/#{db_name || Time.now.to_i}.sql"
+    system "mysqldump -u#{SQL_USER} -p#{SQL_PASS} #{DUMP_CURRENT_DB_NAME} > dumps/#{db_name || Time.now.to_i}.sql"
   end
 
   def self.sync_to_tracker
+    puts "Connecting to dbs\n"
     connect_to_dbs
+    puts "Connected to dbs\n"
+
+    #sync_tariffs
+    clean_up "tarif_plans", "id", Tariff
+    sync_tariffs
+    clean_up "users", "uid", User
+    sync_users
+  end
+
+  ["Payment", "Fee"].each do |klass|
+    name = klass.downcase.pluralize
+    define_singleton_method "sync_#{name}".to_sym do |user, result|
+      q = "SELECT *, INET_NTOA(`ip`) as `ip`
+                        FROM `#{name}`
+                        WHERE `uid`='#{user.id}' AND `bill_id`='#{result["bill_id"]}'"
+      @current_conn.query(q).each do |result|
+        model = self.const_get(klass)
+        item = model.where(billing: user.billing, remote_id: result["id"]).first_or_create
+        item.with_lock do
+          #item.created_at = DateTime.strptime(result["date"], "%Y-%m-%d %H:%M:%S").to_time rescue Time.now - 50.years.ago
+          item.amount = result["sum"]
+          item.deposit = result["last_deposit"]
+          item.description = result["dsc"]
+          item.ip = result["ip"]
+          save_with_log item, item.remote_id
+        end
+      end
+    end
+  end
+
+  private
+
+  def self.clean_up table, field, klass
+    query = @current_conn.query("SELECT GROUP_CONCAT(`#{field}` SEPARATOR ',') AS `records` FROM `#{table}`")
+    ids = query.first["records"].split(",")
+    klass.where.not(id: ids).each(&:delete)
+  end
+
+  def self.sync_tariffs
+    query = @current_conn.query("
+      SELECT `id`, `name`, `month_fee`, `day_fee`
+      FROM `tarif_plans`")
+    query.each do |res|
+      tariff = Tariff.where(id: res.delete("id")).first_or_create
+      tariff.with_lock do
+        res.each { |k, v| tariff.method("#{k}=".to_sym).call(v) }
+        save_with_log tariff, tariff.id
+      end
+    end
+  end
+
+  def self.sync_billing user, res
+    # Build user billing
+    billing = Billing.where(id: res["bill_id"], user: user).first_or_create
+    billing.with_lock {
+      billing.deposit = res["deposit"]
+      billing.remote_id = res["bill_id"]
+      billing.created_at = DateTime.strptime(res["registration"], "%Y-%m-%d").to_time rescue Time.now
+      save_with_log billing, res["bill_id"]
+    }
+  end
+
+  def self.sync_users offset = 0, limit = nil
+    limit ||= USERS_LIMIT_PER_TRANSACTION
+    query = @current_conn.query("
+      SELECT u.*, upi.*, dvm.*, dvm.registration as dv_reg, `bills`.*, `bills`.`registration` as `bill_reg`, `bills`.id as bill_id,
+      INET_NTOA(dvm.ip) as `ip`, INET_NTOA(dvm.netmask) as `netmask`
+      FROM `users` u
+      LEFT JOIN `users_pi` upi ON (u.uid=upi.uid)
+      LEFT JOIN `dv_main` dvm ON (u.uid=dvm.uid)
+      LEFT JOIN `bills` ON (u.uid=bills.uid)
+      LIMIT #{offset},#{limit}")
+    query.each do |res|
+      user = User.where(id: res["uid"]).first_or_create
+      user.with_lock do
+        user.created_at = DateTime.strptime(res["registration"], "%Y-%m-%d").to_time rescue Time.now
+        user.username = res["id"]
+        user.registration = res["dv_reg"]
+        user.initials = res["fio"]
+        user.password = res["password"] if user.new_record?
+        # #user.disable = res["disable"]
+        %w(email disable ip speed netmask address_street address_build address_flat).each do |f|
+          user.method("#{f}=".to_sym).call(res[f])
+        end
+        %w(billing payments fees).each { |table| self.method("sync_#{table}".to_sym).call(user, res) }
+
+        save_with_log user, res["uid"]
+      end
+    end
+    offset += 1
+    sync_users offset, limit unless query.count == 0
+  end
+
+
+  def self.count what="users", &blk
+    @current_conn.query("SELECT COUNT(*) AS c FROM #{what}") do |res|
+      blk.call(res.first["c"])
+    end
+  end
+
+  def self.save_with_log inst, id
+    begin
+      inst.save! #! if user.valid?
+    rescue ActiveRecord::RecordInvalid
+      puts "ERROR saving #{inst.to_s} #{id}: #{inst.errors.full_messages.join("; ")}"
+    end
   end
 end
