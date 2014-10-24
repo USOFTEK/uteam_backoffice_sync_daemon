@@ -1,5 +1,5 @@
 #add gems from tracker
-eval(IO.read("/home/yaro/Development/Meta/cabina/tracker/Gemfile"), binding)
+eval(IO.read("#{File.expand_path(File.join(File.dirname(__FILE__), "..", "goliath", "tracker"))}/Gemfile"), binding)
 
 # Mysql2
 gem "mysql2"

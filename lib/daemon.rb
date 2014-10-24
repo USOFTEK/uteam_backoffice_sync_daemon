@@ -5,8 +5,11 @@ module Daemon
   extend DaemonOptions
 
   def self.archive_db db_name = nil
-    system "mysqldump -u#{SQL_USER} -p#{SQL_PASS} #{DUMP_CURRENT_DB_NAME} > dumps/#{db_name || Time.now.to_i}.sql"
+    sql_pass = ""
+    sql_pass = " -p#{SQL_PASS}" unless SQL_PASS.strip.empty?
+    system "mysqldump -u#{SQL_USER}#{sql_pass} #{DUMP_CURRENT_DB_NAME} > dumps/#{db_name || Time.now.to_i}.sql"
   end
+
 
   def self.sync_to_tracker
     puts "Connecting to dbs\n"
@@ -19,6 +22,8 @@ module Daemon
     clean_up "users", "uid", User
     sync_users
   end
+
+  # Dinamically sync user fees and payments
 
   ["Payment", "Fee"].each do |klass|
     name = klass.downcase.pluralize
@@ -49,6 +54,10 @@ module Daemon
     klass.where.not(id: ids).each(&:delete)
   end
 
+
+  # Sync actions
+
+  # Sync tariffs
   def self.sync_tariffs
     query = @current_conn.query("
       SELECT `id`, `name`, `month_fee`, `day_fee`
@@ -61,7 +70,7 @@ module Daemon
       end
     end
   end
-
+  # Sync user billing data
   def self.sync_billing user, res
     # Build user billing
     billing = Billing.where(id: res["bill_id"], user: user).first_or_create
@@ -72,11 +81,29 @@ module Daemon
       save_with_log billing, res["bill_id"]
     }
   end
-
+  # Sync user network statistic data
+  def self.sync_day_stats user, res
+    query = @current_conn.query("SELECT *, SUM(`c_acct_input_gigawords` * 4294967296 + `c_acct_input_octets`) as sent, 
+                                      SUM( `c_acct_output_gigawords` * 4294967296 + `c_acct_output_octets`  ) as received 
+                                      FROM `day_stats` WHERE `uid`=#{user.id} GROUP BY year,month,day")
+    query.each { |stat|
+      record = NetworkActivity.where(user_id: user.id, per: Date.parse("#{stat["year"]}-#{stat["month"]}-#{stat["day"]}").to_time).first_or_create
+      record.sent = stat["sent"]
+      record.received = stat["received"]
+      record.save! if record.valid?
+    }
+  end
+  # Sync User
+  def self.sync_users_sms user, res
+    @current_conn.query("SELECT * FROM `users_sms` WHERE `uid`=#{user.id}").each { |p|
+      Phone.find_or_create_by(user_id: user.id, number: p["sms_phone"])
+    }
+  end
+  # Sync users
   def self.sync_users offset = 0, limit = nil
     limit ||= USERS_LIMIT_PER_TRANSACTION
     query = @current_conn.query("
-      SELECT u.*, upi.*, dvm.*, dvm.registration as dv_reg, `bills`.*, `bills`.`registration` as `bill_reg`, `bills`.id as bill_id,
+      SELECT u.*, u.id as user_name, upi.*, dvm.*, dvm.registration as dv_reg, `bills`.*, `bills`.`registration` as `bill_reg`, `bills`.id as bill_id,
       INET_NTOA(dvm.ip) as `ip`, INET_NTOA(dvm.netmask) as `netmask`
       FROM `users` u
       LEFT JOIN `users_pi` upi ON (u.uid=upi.uid)
@@ -87,15 +114,19 @@ module Daemon
       user = User.where(id: res["uid"]).first_or_create
       user.with_lock do
         user.created_at = DateTime.strptime(res["registration"], "%Y-%m-%d").to_time rescue Time.now
-        user.username = res["id"]
+        user.tariff_id = res["tp_id"].to_i
+        user.username = res["user_name"]
         user.registration = res["dv_reg"]
         user.initials = res["fio"]
         user.password = res["password"] if user.new_record?
-        # #user.disable = res["disable"]
+        user_phone = Phone.find_or_create_by(user_id: user.id, number: res["phone"].to_s)
+        user_phone.update_attributes(is_main: true)
+        user_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^3?8(050|066|068|095|099|096|093|063)/i).empty?
+        user.disable = !res["disable"].to_i.zero?
         %w(email disable ip speed netmask address_street address_build address_flat).each do |f|
           user.method("#{f}=".to_sym).call(res[f])
         end
-        %w(billing payments fees).each { |table| self.method("sync_#{table}".to_sym).call(user, res) }
+        %w(billing payments fees day_stats users_sms).each { |table| self.method("sync_#{table}".to_sym).call(user, res) }
 
         save_with_log user, res["uid"]
       end

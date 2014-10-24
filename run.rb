@@ -1,5 +1,6 @@
 require "rubygems"
 require "bundler/setup"
+require "date"
 
 require "em-synchrony"
 require "em-synchrony/activerecord"
