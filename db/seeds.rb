@@ -49,7 +49,7 @@ ENV["numb"].to_i.times { |i|
 		puts "Creating users_pi"
 		DB.query("INSERT INTO `users_pi`(`uid`,`fio`,`phone`,`email`,`address_street`,`address_build`,
 																			`address_flat`,`comments`,`contract_id`) 
-													VALUES(#{user_id}, '#{Faker::Name.name}',
+													VALUES(#{user_id}, \"#{Faker::Name.name}\",
 																	'#{Faker::PhoneNumber.cell_phone.gsub(/[^\d]+/,"")}',
 																	'#{Faker::Internet.email}','#{Faker::Address.street_name}',
 																	'#{Faker::Address.building_number}', '#{Faker::Address.building_number}',
