@@ -51,7 +51,7 @@ ENV["numb"].to_i.times { |i|
 																			`address_flat`,`comments`,`contract_id`) 
 													VALUES(#{user_id}, \"#{Faker::Name.name}\",
 																	'#{Faker::PhoneNumber.cell_phone.gsub(/[^\d]+/,"")}',
-																	'#{Faker::Internet.email.gsub(/^[^@]+/i) { |match| "#{match}_#{i}" }}',\"#{Faker::Address.street_name}\",
+																	'#{Faker::Internet.free_email(username)}',\"#{Faker::Address.street_name}\",
 																	'#{Faker::Address.building_number}', '#{Faker::Address.building_number}',
 																	'','#{Faker::Number.number(8)}'
 													)")
