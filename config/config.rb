@@ -1,4 +1,4 @@
-
+require "i18n"
 #activerecord
 I18n.enforce_available_locales = false
 
@@ -14,7 +14,7 @@ settings = {
     staging: {
         path_to_tracker: "/var/www/cabinet/tracker/current",
         sql_user: "root",
-        sql_pass: "123456789"
+        sql_pass: ""
     }
 }
 #paths
