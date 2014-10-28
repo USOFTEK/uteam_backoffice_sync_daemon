@@ -95,7 +95,7 @@ namespace(:db) do
   end
 
   desc("Load seeds")
-  task(:seed => ["db:connect"]) do
+  task(:seed => ["db:connect", "db:clean"]) do
     ENV["password"] ||= "my_temp_password"
     Rake::Task["db:abort_if_pending_migrations"].invoke
     # Init connection
