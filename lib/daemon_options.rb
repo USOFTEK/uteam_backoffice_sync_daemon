@@ -2,9 +2,16 @@ require_relative "../config/config"
 require "yaml"
 require "erb"
 
+require "em-synchrony"
+require "em-synchrony/activerecord"
+require "em-http-request"
+require "active_support/all"
+require 'em-synchrony/mysql2'
+
 module DaemonOptions
 
   def connect_to_dbs
+    $env = $env.to_s
     error! unless connect_to_tracker && connect_to_current
   end
 

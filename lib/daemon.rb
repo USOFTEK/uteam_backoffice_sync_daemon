@@ -5,15 +5,19 @@ module Daemon
   extend DaemonOptions
 
   def self.archive_db db_name = nil
+    current_db = db_name == "test_dump" ? "current_db_test" : DUMP_CURRENT_DB_NAME
     sql_pass = ""
     sql_pass = " -p#{SQL_PASS}" unless SQL_PASS.strip.empty?
-    system "mysqldump -u#{SQL_USER}#{sql_pass} #{DUMP_CURRENT_DB_NAME} > dumps/#{db_name || Time.now.to_i}.sql"
+    system "mysqldump -u#{SQL_USER}#{sql_pass} #{current_db} > dumps/#{db_name || Time.now.to_i}.sql"
   end
 
+  def self.current_conn
+    @current_conn
+  end
 
   def self.sync_to_tracker
     puts "Connecting to dbs\n"
-    connect_to_dbs
+    connect_to_dbs unless @current_conn
     puts "Connected to dbs\n"
 
     #sync_tariffs
@@ -23,7 +27,7 @@ module Daemon
     sync_users
   end
 
-  # Dinamically sync user fees and payments
+  # Dynamically sync user fees and payments
 
   ["Payment", "Fee"].each do |klass|
     name = klass.downcase.pluralize
@@ -70,6 +74,7 @@ module Daemon
       end
     end
   end
+
   # Sync user billing data
   def self.sync_billing user, res
     # Build user billing
@@ -81,6 +86,7 @@ module Daemon
       save_with_log billing, res["bill_id"]
     }
   end
+
   # Sync user network statistic data
   def self.sync_day_stats user, res
     query = @current_conn.query("SELECT *, SUM(`c_acct_input_gigawords` * 4294967296 + `c_acct_input_octets`) as sent, 
@@ -93,12 +99,14 @@ module Daemon
       record.save! if record.valid?
     }
   end
-  # Sync User
+
+  # Sync User phones
   def self.sync_users_sms user, res
     @current_conn.query("SELECT * FROM `users_sms` WHERE `uid`=#{user.id}").each { |p|
       Phone.find_or_create_by(user_id: user.id, number: p["sms_phone"])
     }
   end
+
   # Sync users
   def self.sync_users offset = 0, limit = nil
     limit ||= USERS_LIMIT_PER_TRANSACTION

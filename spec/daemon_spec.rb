@@ -16,4 +16,18 @@ describe Daemon do
 
   end
 
+  describe "#connect_to_dbs" do
+
+    it "proves that both dbs are connected and data is ready to be accessed" do
+      expect(Daemon.current_conn).not_to be nil
+      expect(User.all.count).to be > 0
+      Daemon.current_conn.query("SELECT COUNT(*) AS c FROM `current_db_test`.`users`;") do |result|
+        expect(result["c"]).to be > 0
+      end
+    end
+
+    #it ""
+
+  end
+
 end
