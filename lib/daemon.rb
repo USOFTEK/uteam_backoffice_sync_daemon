@@ -63,7 +63,7 @@ module Daemon
       SELECT `id`, `name`, `month_fee`, `day_fee`
       FROM `tarif_plans`")
     query.each do |res|
-      tariff = Tariff.where(id: res.delete("id")).first_or_create
+      tariff = Tariff.where(remote_id: res.delete("id")).first_or_create
       tariff.with_lock do
         res.each { |k, v| tariff.method("#{k}=".to_sym).call(v) }
         save_with_log tariff, tariff.id
@@ -114,7 +114,7 @@ module Daemon
       user = User.where(id: res["uid"]).first_or_create
       user.with_lock do
         user.created_at = DateTime.strptime(res["registration"], "%Y-%m-%d").to_time rescue Time.now
-        user.tariff_id = res["tp_id"].to_i
+        user.tariff = Tariff.where(remote_id: res["tp_id"].to_i).first_or_create
         user.username = res["user_name"]
         user.registration = res["dv_reg"]
         user.initials = res["fio"]
