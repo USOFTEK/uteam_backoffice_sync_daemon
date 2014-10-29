@@ -2,12 +2,12 @@ require "i18n"
 #activerecord
 I18n.enforce_available_locales = false
 
-ENVIR ||= "#{ ENV['ENVIR'] || :development }".downcase.to_sym
+ENVIR ||= "#{ ENV['ENVIR'] || "development" }".downcase.to_sym
 p ENVIR
 
 settings = {
     development: {
-        path_to_tracker: File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "Meta", "cabina", "tracker")),
+        path_to_tracker: File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "goliath", "tracker")),
         sql_user: "root",
         sql_pass: "123456789"
     },
