@@ -15,6 +15,15 @@ module Daemon
     @current_conn
   end
 
+  # Sync data from tracker
+  def self.sync_from_traker
+    connect_to_dbs unless @current_conn
+    # Sync user model
+    sync_update_users
+
+  end
+
+  # Sync data to tracker
   def self.sync_to_tracker
     puts "Connecting to dbs\n"
     connect_to_dbs unless @current_conn
@@ -100,13 +109,6 @@ module Daemon
     }
   end
 
-  # Sync User phones
-  def self.sync_users_sms user, res
-    @current_conn.query("SELECT * FROM `users_sms` WHERE `uid`=#{user.id}").each { |p|
-      Phone.find_or_create_by(user_id: user.id, number: p["sms_phone"])
-    }
-  end
-
   # Sync users
   def self.sync_users offset = 0, limit = nil
     limit ||= USERS_LIMIT_PER_TRANSACTION
@@ -117,6 +119,7 @@ module Daemon
       LEFT JOIN `users_pi` upi ON (u.uid=upi.uid)
       LEFT JOIN `dv_main` dvm ON (u.uid=dvm.uid)
       LEFT JOIN `bills` ON (u.uid=bills.uid)
+      LEFT JOIN `users_sms` usms ON (u.uid=usms.uid)
       LIMIT #{offset},#{limit}")
     query.each do |res|
       user = User.where(id: res["uid"]).first_or_create
@@ -130,6 +133,7 @@ module Daemon
         user_phone = Phone.find_or_create_by(user_id: user.id, number: res["phone"].to_s)
         user_phone.update_attributes(is_main: true)
         user_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^3?8(050|066|068|095|099|096|093|063)/i).empty?
+        Phone.find_or_create_by(user_id: user.id, number: res["sms_phone"]).update_attributes(is_mobile: true)
         user.disable = !res["disable"].to_i.zero?
         %w(email disable ip speed netmask address_street address_build address_flat).each do |f|
           user.method("#{f}=".to_sym).call(res[f])
@@ -142,7 +146,6 @@ module Daemon
     offset += 1
     sync_users offset, limit unless query.count == 0
   end
-
 
   def self.count what="users", &blk
     @current_conn.query("SELECT COUNT(*) AS c FROM #{what}") do |res|
@@ -157,4 +160,38 @@ module Daemon
       puts "ERROR saving #{inst.to_s} #{id}: #{inst.errors.full_messages.join("; ")}"
     end
   end
+
+  # Sync users from tracker
+  def self.sync_update_users
+    User.all.each { |user|
+      user.with_lock {
+        # Skip if user has no updates
+        next if user.previous_version.nil?
+        sync_user_profile(user) unless Activity.where(object: user.class.name.to_s.downcase, prev: user.previous_version.version.index).exists?
+      }
+    }
+  end
+
+  def self.sync_user_profile object
+    # TODO: confirm method to save phone in users_pi
+    phone = ""
+    # phone = ",upi.`phone`='#{object.phones.primary.gsub(/[^\d]+/, "").to_i}'" if object.phones.primary
+    secondaries = ""
+    # secondary = ",usms.`sms_phone`='#{object.phones.mobiles.secondaries.number}'" if object.phones.mobiles.secondaries.any?
+    puts "\n#{object.id}\n"
+    current_conn.query("UPDATE `users` u 
+                          LEFT JOIN `users_pi` upi ON (u.`uid`=upi.`uid`) 
+                          LEFT JOIN `users_sms` usms ON (u.`uid`=usms.`uid`) 
+                              SET upi.`fio`=\"#{object.initials}\",upi.`address_street`=\"#{object.address_street}\",
+                              upi.`address_build`=\"#{object.address_build}\",upi.`address_flat`=\"#{object.address_flat}\",
+                              upi.`email`=\"#{object.email}\",u.`disable`='#{object.disabled? ? 1 : 0}'#{phone}#{secondaries}"
+                      )
+    if object.phones.mobiles.any?
+      # Delete all previous mobile phones
+      # current_conn.query("DELETE FROM `users_sms` WHERE `uid`=#{object.id}");
+      # Update phones
+    end
+    Activity.find_or_create_by(object: object.class.name.to_s.downcase, prev: object.previous_version.version.index)
+  end
+
 end
