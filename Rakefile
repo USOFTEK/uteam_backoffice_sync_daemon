@@ -102,7 +102,7 @@ namespace(:db) do
     with_rescue {
     	configuration = send("#{ENV["DB_CONFIG"]}_db_config")
 			DB = Mysql2::Client.new(configuration[ENV["RACK_ENV"].downcase])
-    	require "#{File.dirname(__FILE__)}/db/seeds"
+			require "#{File.dirname(__FILE__)}/db/seeds"
     }
   end
 

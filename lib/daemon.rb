@@ -109,6 +109,19 @@ module Daemon
     }
   end
 
+  # Sync user sms data
+  def self.sync_day_stats user, res
+    query = @current_conn.query("SELECT *, SUM(`c_acct_input_gigawords` * 4294967296 + `c_acct_input_octets`) as sent, 
+                                      SUM( `c_acct_output_gigawords` * 4294967296 + `c_acct_output_octets`  ) as received 
+                                      FROM `day_stats` WHERE `uid`=#{user.id} GROUP BY year,month,day")
+    query.each { |stat|
+      record = NetworkActivity.where(user_id: user.id, per: Date.parse("#{stat["year"]}-#{stat["month"]}-#{stat["day"]}").to_time).first_or_create
+      record.sent = stat["sent"]
+      record.received = stat["received"]
+      record.save! if record.valid?
+    }
+  end
+
   # Sync users
   def self.sync_users offset = 0, limit = nil
     limit ||= USERS_LIMIT_PER_TRANSACTION
@@ -138,7 +151,7 @@ module Daemon
         %w(email disable ip speed netmask address_street address_build address_flat).each do |f|
           user.method("#{f}=".to_sym).call(res[f])
         end
-        %w(billing payments fees day_stats users_sms).each { |table| self.method("sync_#{table}".to_sym).call(user, res) }
+        %w(billing payments fees day_stats).each { |table| self.method("sync_#{table}".to_sym).call(user, res) }
 
         save_with_log user, res["uid"]
       end
