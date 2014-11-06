@@ -1,3 +1,5 @@
+source "https://rubygems.org/"
+
 #add gems from tracker
 begin
   DIR = File.dirname(__FILE__)
