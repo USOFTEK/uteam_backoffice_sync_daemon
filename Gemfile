@@ -4,8 +4,8 @@ source "https://rubygems.org/"
 begin
   DIR = File.dirname(__FILE__)
   on_server = DIR.scan(/^\/var\/www\/cabinet/i).empty? ?
-      File.join(DIR, "..", "goliath", "tracker", "Gemfile") :
-      File.join(DIR, "..", "..", "tracker", "current", "Gemfile")
+      "../goliath/tracker/Gemfile" :
+      "../../tracker/current/Gemfile"
   file_path = File.expand_path(on_server, __FILE__)
   puts file_path
   eval(IO.read(file_path), binding)
