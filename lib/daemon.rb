@@ -46,7 +46,7 @@ module Daemon
                         WHERE `uid`='#{user.id}' AND `bill_id`='#{result["bill_id"]}'"
       @current_conn.query(q).each do |result|
         model = self.const_get(klass)
-        item = model.where(billing: user.billing, remote_id: result["id"]).first_or_create
+        item = model.where(billing_id: result["id"], remote_id: result["id"]).first_or_create
         item.with_lock do
           #item.created_at = DateTime.strptime(result["date"], "%Y-%m-%d %H:%M:%S").to_time rescue Time.now - 50.years.ago
           item.amount = result["sum"]
