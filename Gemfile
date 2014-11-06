@@ -5,7 +5,8 @@ begin
   DIR = File.dirname(__FILE__)
   file_path = File.expand_path(
   							DIR.scan(/^\/var\/www\/cabinet/i).empty? ? 
-										File.join(DIR, "..", "goliath", "tracker", "Gemfile") : File.join(DIR, "..", "tracker", "current", "Gemfile")
+										File.join(DIR, "..", "goliath", "tracker", "Gemfile") :
+                    File.join(DIR, "..", "..", "tracker", "current", "Gemfile")
 							)
   puts file_path
   eval(IO.read(file_path), binding)
