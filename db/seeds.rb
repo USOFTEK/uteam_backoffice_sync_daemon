@@ -67,10 +67,10 @@ ENV["numb"].to_i.times { |i|
 														VALUES(#{user_id},#{tariff["id"]}, '#{user_created_at}', '#{Faker::Internet.ip_v4_address}', #{tariff["name"].match(/(\d+.*)/[1].to_i},INET_ATON('255.255.255.#{rand(255)}'),'#{ENV["password"]}')")
 		# Add user fees
 		puts "Creating user fees"
-		rand(5).times { DB.query("INSERT INTO `fees` SET `date`='#{Faker::Date.between(Date.parse(user_created_at), Time.now).to_time.to_s.gsub(/( \+\.*)$/i, "")}', `sum`=#{Faker::Commerce.price}, `dsc`=\"#{Faker::Lorem.sentence}\", `ip`=INET_ATON('#{Faker::Internet.ip_v4_address}'), `last_deposit`='#{Faker::Commerce.price}', `uid`=#{user_id}, `aid`=1, `bill_id`=#{billing_id}") }
+		5.times { DB.query("INSERT INTO `fees` SET `date`='#{Faker::Date.between(Date.parse(user_created_at), Time.now).to_time.to_s.gsub(/( \+\.*)$/i, "")}', `sum`=#{Faker::Commerce.price}, `dsc`=\"#{Faker::Lorem.sentence}\", `ip`=INET_ATON('#{Faker::Internet.ip_v4_address}'), `last_deposit`='#{Faker::Commerce.price}', `uid`=#{user_id}, `aid`=1, `bill_id`=#{billing_id}") }
 		# Add user payments
 		puts "Creating user payments"
-		rand(10).times { DB.query("INSERT INTO `payments` SET `date`='#{Faker::Date.between(Date.parse(user_created_at), Time.now).to_time.to_s.gsub(/( \+\.*)$/i, "")}', `sum`=#{Faker::Commerce.price}, `dsc`=\"#{Faker::Lorem.sentence}\", `ip`=INET_ATON('#{Faker::Internet.ip_v4_address}'), `last_deposit`='#{Faker::Commerce.price}', `uid`=#{user_id}, `aid`=6, `bill_id`=#{billing_id}") }
+		10.times { DB.query("INSERT INTO `payments` SET `date`='#{Faker::Date.between(Date.parse(user_created_at), Time.now).to_time.to_s.gsub(/( \+\.*)$/i, "")}', `sum`=#{Faker::Commerce.price}, `dsc`=\"#{Faker::Lorem.sentence}\", `ip`=INET_ATON('#{Faker::Internet.ip_v4_address}'), `last_deposit`='#{Faker::Commerce.price}', `uid`=#{user_id}, `aid`=6, `bill_id`=#{billing_id}") }
 		# Add user days statistics
 		# Build stats from rand day
 		puts "Creating user net statistic"
