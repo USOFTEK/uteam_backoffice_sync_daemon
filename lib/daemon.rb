@@ -29,7 +29,6 @@ module Daemon
     connect_to_dbs unless @current_conn
     puts "Connected to dbs\n"
 
-    #sync_tariffs
     clean_up "tarif_plans", "id", Tariff
     sync_tariffs
     clean_up "users", "uid", User
@@ -63,6 +62,7 @@ module Daemon
 
   def self.clean_up table, field, klass
     query = @current_conn.query("SELECT GROUP_CONCAT(`#{field}` SEPARATOR ',') AS `records` FROM `#{table}`")
+    return true if query.first["records"].empty?
     ids = query.first["records"].split(",")
     klass.where.not(id: ids).each(&:delete)
   end

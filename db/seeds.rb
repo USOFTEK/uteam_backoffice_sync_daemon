@@ -64,7 +64,7 @@ ENV["numb"].to_i.times { |i|
 		# Add user network info
 		puts "Creating user dv_main"
 		DB.query("INSERT INTO `dv_main`(`uid`,`tp_id`,`registration`,`ip`,`speed`,`netmask`,`password`) 
-														VALUES(#{user_id},#{tariff["id"]}, '#{user_created_at}', '#{Faker::Internet.ip_v4_address}', #{tariff["name"].match(/(\d+.*)/[1].to_i},INET_ATON('255.255.255.#{rand(255)}'),'#{ENV["password"]}')")
+														VALUES(#{user_id},#{tariff["id"]}, '#{user_created_at}', '#{Faker::Internet.ip_v4_address}', #{tariff["name"].match(/(\d+.*)/)[1].to_i},INET_ATON('255.255.255.#{rand(255)}'),'#{ENV["password"]}')")
 		# Add user fees
 		puts "Creating user fees"
 		5.times { DB.query("INSERT INTO `fees` SET `date`='#{Faker::Date.between(Date.parse(user_created_at), Time.now).to_time.to_s.gsub(/( \+\.*)$/i, "")}', `sum`=#{Faker::Commerce.price}, `dsc`=\"#{Faker::Lorem.sentence}\", `ip`=INET_ATON('#{Faker::Internet.ip_v4_address}'), `last_deposit`='#{Faker::Commerce.price}', `uid`=#{user_id}, `aid`=1, `bill_id`=#{billing_id}") }
