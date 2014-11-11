@@ -64,7 +64,7 @@ ENV["numb"].to_i.times { |i|
 		# Add user network info
 		puts "Creating user dv_main"
 		DB.query("INSERT INTO `dv_main`(`uid`,`tp_id`,`registration`,`ip`,`speed`,`netmask`,`password`) 
-														VALUES(#{user_id},#{tariff["id"]}, '#{user_created_at}', '#{Faker::Internet.ip_v4_address}', '#{tariff["name"].match(/(\d+.*)/)[1]}',INET_ATON('255.255.255.#{rand(255)}'),'#{ENV["password"]}')")
+														VALUES(#{user_id},#{tariff["id"]}, '#{user_created_at}', '#{Faker::Internet.ip_v4_address}', '#{tariff["name"].match(/(\d+)/)[1].to_i}',INET_ATON('255.255.255.#{rand(255)}'),'#{ENV["password"]}')")
 		# Add user fees
 		puts "Creating user fees"
 		5.times { DB.query("INSERT INTO `fees` SET `date`='#{Faker::Date.between(Date.parse(user_created_at), Time.now).to_time.to_s.gsub(/( \+\.*)$/i, "")}', `sum`=#{Faker::Commerce.price}, `dsc`=\"#{Faker::Lorem.sentence}\", `ip`=INET_ATON('#{Faker::Internet.ip_v4_address}'), `last_deposit`='#{Faker::Commerce.price}', `uid`=#{user_id}, `aid`=1, `bill_id`=#{billing_id}") }
@@ -78,7 +78,7 @@ ENV["numb"].to_i.times { |i|
 		while start.to_time.to_i < Time.now.to_i
 			DB.query("INSERT INTO `day_stats` SET `uid`=#{user_id}, `started`='#{start.strftime("%Y-%m-%d %H:%M:%S")}', `day`='#{start.strftime("%d")}', `month`='#{start.strftime("%m")}', `year`='#{start.strftime("%Y")}', `c_acct_input_octets`=#{rundom_number(rand(3))}, `c_acct_output_octets`=#{rundom_number(rand(3))}, `c_acct_input_gigawords`=#{rundom_number(rand(3))}, `c_acct_output_gigawords`=#{rundom_number(rand(3))}, `s_acct_input_octets`=#{rundom_number(rand(3))}, `s_acct_output_octets`=#{rundom_number(rand(3))}, `s_acct_input_gigawords`=#{rundom_number(rand(3))}, `s_acct_output_gigawords`=#{rundom_number(rand(3))}, `lupd`=#{rundom_number(rand(6))}")
 			start += 1.day
-		end	
+		end
 	}
 }
 # # Add abon tariffs

@@ -191,7 +191,6 @@ module Daemon
     # phone = ",upi.`phone`='#{object.phones.primary.gsub(/[^\d]+/, "").to_i}'" if object.phones.primary
     secondaries = ""
     # secondary = ",usms.`sms_phone`='#{object.phones.mobiles.secondaries.number}'" if object.phones.mobiles.secondaries.any?
-    puts "\n#{object.id}\n"
     current_conn.query("UPDATE `users` u 
                           LEFT JOIN `users_pi` upi ON (u.`uid`=upi.`uid`) 
                           LEFT JOIN `users_sms` usms ON (u.`uid`=usms.`uid`) 
