@@ -143,10 +143,11 @@ module Daemon
         user.registration = res["dv_reg"]
         user.initials = res["fio"]
         user.password = res["password"] if user.new_record?
-        user_phone = Phone.find_or_create_by(user_id: user.id, number: res["phone"].to_s)
-        user_phone.update_attributes(is_main: true)
-        user_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^3?8(050|066|068|095|099|096|093|063)/i).empty?
-        Phone.find_or_create_by(user_id: user.id, number: res["sms_phone"]).update_attributes(is_mobile: true)
+        user.primary_phone = Phone.find_or_create_by(user_id: user.id, number: res["phone"].to_s)
+        user.primary_phone.update_attributes(is_main: true)
+        user_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^+?3?8(050|066|068|095|099|096|093|063|067)/i).empty?
+        user.mobile_phone = Phone.find_or_create_by(user_id: user.id, number: res["sms_phone"])
+        user.mobile_phone.update_attributes(is_mobile: true)
         user.disable = !res["disable"].to_i.zero?
         %w(email disable ip speed netmask address_street address_build address_flat).each do |f|
           user.method("#{f}=".to_sym).call(res[f])
@@ -188,7 +189,7 @@ module Daemon
   def self.sync_user_profile object
     # TODO: confirm method to save phone in users_pi
     phone = ""
-    # phone = ",upi.`phone`='#{object.phones.primary.gsub(/[^\d]+/, "").to_i}'" if object.phones.primary
+    # phone = ",upi.`phone`='#{object.primary_phone.gsub(/[^\d]+/, "").to_i}'" unless object.primary_phone.nil?
     secondaries = ""
     # secondary = ",usms.`sms_phone`='#{object.phones.mobiles.secondaries.number}'" if object.phones.mobiles.secondaries.any?
     current_conn.query("UPDATE `users` u 
