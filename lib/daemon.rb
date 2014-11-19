@@ -190,20 +190,15 @@ module Daemon
     # TODO: confirm method to save phone in users_pi
     phone = ""
     # phone = ",upi.`phone`='#{object.primary_phone.gsub(/[^\d]+/, "").to_i}'" unless object.primary_phone.nil?
-    secondaries = ""
-    # secondary = ",usms.`sms_phone`='#{object.phones.mobiles.secondaries.number}'" if object.phones.mobiles.secondaries.any?
+    mobile = ""
+    mobile = ",usms.`sms_phone`='#{object.mobile_phone.number}'" if object.mobile_phone
     current_conn.query("UPDATE `users` u 
                           LEFT JOIN `users_pi` upi ON (u.`uid`=upi.`uid`) 
                           LEFT JOIN `users_sms` usms ON (u.`uid`=usms.`uid`) 
                               SET upi.`fio`=\"#{object.initials}\",upi.`address_street`=\"#{object.address_street}\",
                               upi.`address_build`=\"#{object.address_build}\",upi.`address_flat`=\"#{object.address_flat}\",
-                              upi.`email`=\"#{object.email}\",u.`disable`='#{object.disabled? ? 1 : 0}'#{phone}#{secondaries}"
+                              upi.`email`=\"#{object.email}\",u.`disable`='#{object.disabled? ? 1 : 0}'#{phone}#{mobile}"
                       )
-    if object.phones.mobiles.any?
-      # Delete all previous mobile phones
-      # current_conn.query("DELETE FROM `users_sms` WHERE `uid`=#{object.id}");
-      # Update phones
-    end
     Activity.find_or_create_by(object: object.class.name.to_s.downcase, prev: object.previous_version.version.index)
   end
 
