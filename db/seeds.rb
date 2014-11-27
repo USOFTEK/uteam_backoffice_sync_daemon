@@ -22,10 +22,23 @@ puts "Creating tarif_plans"
 max_id = DB.query("SELECT (MAX(`id`)+ 1) as `id` FROM `tarif_plans`").first["id"]
 tariffs.each { |tariff|
 	max_id ||= 0
-	DB.query("INSERT INTO `tarif_plans`(`id`,`month_fee`, `name`,`day_fee`) 
+	DB.query("INSERT INTO `tarif_plans`(`id`,`month_fee`, `name`,`day_fee`)
 													VALUES(#{max_id},'#{tariff[:month_fee]}','#{tariff[:name]}','#{tariff[:day_fee]}')")
 	max_id += 1
 }
+
+# Create Groups
+puts "Creating groups"
+group_max_id = DB.query("SELECT (MAX(`gid`)+ 1) as `id` FROM `groups`").first["id"] || 0
+20.times do
+  name = [Faker::Hacker.adjective.capitalize, Faker::Name.title.pluralize].join " "
+  DB.query("INSERT INTO `groups`(`gid`,`name`, `descr`)
+													VALUES(#{group_max_id},
+                                '#{ name }', '#{ Faker::Lorem.paragraph }')")
+  group_max_id += 1
+end
+group_ids = DB.query("SELECT GROUP_CONCAT(gid SEPARATOR ', ') as gids FROM groups;").first["gids"].split(", ")
+
 # Users list
 USERS = ["leo", "lesya", "ruslan", "gena"]
 ENV["numb"].to_i.times { |i|
@@ -34,13 +47,13 @@ ENV["numb"].to_i.times { |i|
 		username += "-#{i}"
 		puts "Creating a user: #{username}"
 		user_created_at = (Date.today - rand(3).month).to_s
-		DB.query("INSERT INTO `users`(`id`,`credit`,`registration`,`password`,`disable`) 
+		DB.query("INSERT INTO `users`(`id`,`credit`,`registration`,`password`,`disable`,`gid`)
 														VALUES('#{username}','#{Faker::Commerce.price}','#{user_created_at}',
-															'#{ENV["password"]}','#{[1,0].sample}')")
+															'#{ENV["password"]}','#{[1,0].sample}',#{group_ids.sample})")
 		user_id = DB.last_id
 		# Create billing for user
 		puts "Creating bills"
-		DB.query("INSERT INTO `bills`(`deposit`, `uid`, `registration`) 
+		DB.query("INSERT INTO `bills`(`deposit`, `uid`, `registration`)
 														VALUES('#{Faker::Commerce.price}', #{user_id}, '#{user_created_at}')")
 		billing_id = DB.last_id
 		# Add to user
@@ -48,7 +61,7 @@ ENV["numb"].to_i.times { |i|
 		# Add user data
 		puts "Creating users_pi"
 		DB.query("INSERT INTO `users_pi`(`uid`,`fio`,`phone`,`email`,`address_street`,`address_build`,
-																			`address_flat`,`comments`,`contract_id`) 
+																			`address_flat`,`comments`,`contract_id`)
 													VALUES(#{user_id}, \"#{Faker::Name.name}\",
 																	'#{Faker::PhoneNumber.cell_phone.gsub(/[^\d]+/,"")}',
 																	'#{Faker::Internet.free_email(username)}',\"#{Faker::Address.street_name}\",
@@ -63,7 +76,7 @@ ENV["numb"].to_i.times { |i|
 		tariff = DB.query("SELECT * FROM `tarif_plans` WHERE `id` >= (SELECT FLOOR(MAX(`id`) * RAND()) FROM `tarif_plans`) ORDER BY `id` LIMIT 1").first
 		# Add user network info
 		puts "Creating user dv_main"
-		DB.query("INSERT INTO `dv_main`(`uid`,`tp_id`,`registration`,`ip`,`speed`,`netmask`,`password`) 
+		DB.query("INSERT INTO `dv_main`(`uid`,`tp_id`,`registration`,`ip`,`speed`,`netmask`,`password`)
 														VALUES(#{user_id},#{tariff["id"]}, '#{user_created_at}', '#{Faker::Internet.ip_v4_address}', '#{tariff["name"].match(/(\d+)/)[1].to_i}',INET_ATON('255.255.255.#{rand(255)}'),'#{ENV["password"]}')")
 		# Add user fees
 		puts "Creating user fees"

@@ -1,4 +1,4 @@
-require_relative "../config/config"
+require "#{File.dirname(__FILE__)}/../config/config"
 require "yaml"
 require "erb"
 

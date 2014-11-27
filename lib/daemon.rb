@@ -31,6 +31,8 @@ module Daemon
 
     clean_up "tarif_plans", "id", Tariff
     sync_tariffs
+    clean_up "groups", "gid", Group
+    sync_groups
     clean_up "users", "uid", User
     sync_users
   end
@@ -84,6 +86,23 @@ module Daemon
     end
   end
 
+  # Sync tariffs
+  def self.sync_groups
+    query = @current_conn.query("
+      SELECT `gid`, `name`, `descr`
+      FROM `groups`")
+    query.each do |res|
+      group = Group.where(id: res.delete("gid")).first_or_create
+      group.with_lock do
+        res.each do |k, v|
+          k = "description" if k == "descr"
+          group.method("#{k}=".to_sym).call(v)
+        end
+        save_with_log group, group.id
+      end
+    end
+  end
+
   # Sync user billing data
   def self.sync_billing user, res
     # Build user billing
@@ -109,18 +128,6 @@ module Daemon
     }
   end
 
-  # Sync user sms data
-  def self.sync_day_stats user, res
-    query = @current_conn.query("SELECT *, SUM(`c_acct_input_gigawords` * 4294967296 + `c_acct_input_octets`) as sent, 
-                                      SUM( `c_acct_output_gigawords` * 4294967296 + `c_acct_output_octets`  ) as received 
-                                      FROM `day_stats` WHERE `uid`=#{user.id} GROUP BY year,month,day")
-    query.each { |stat|
-      record = NetworkActivity.where(user_id: user.id, per: Date.parse("#{stat["year"]}-#{stat["month"]}-#{stat["day"]}").to_time).first_or_create
-      record.sent = stat["sent"]
-      record.received = stat["received"]
-      record.save! if record.valid?
-    }
-  end
 
   # Sync users
   def self.sync_users offset = 0, limit = nil
@@ -139,13 +146,14 @@ module Daemon
       user.with_lock do
         user.created_at = DateTime.strptime(res["registration"], "%Y-%m-%d").to_time rescue Time.now
         user.tariff = Tariff.where(remote_id: res["tp_id"].to_i).first_or_create
+        user.group = Group.where(id: res["gid"].to_i).first_or_create
         user.username = res["user_name"]
         user.registration = res["dv_reg"]
         user.initials = res["fio"]
         user.password = res["password"] if user.new_record?
         user.primary_phone = Phone.find_or_create_by(user_id: user.id, number: res["phone"].to_s)
         user.primary_phone.update_attributes(is_main: true)
-        user_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^+?3?8(050|066|068|095|099|096|093|063|067)/i).empty?
+        user.primary_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^+?3?8(050|066|068|095|099|096|093|063|067)/i).empty?
         user.mobile_phone = Phone.find_or_create_by(user_id: user.id, number: res["sms_phone"])
         user.mobile_phone.update_attributes(is_mobile: true)
         user.disable = !res["disable"].to_i.zero?
