@@ -29,6 +29,8 @@ module Daemon
     connect_to_dbs unless @current_conn
     puts "Connected to dbs\n"
 
+    clean_up "abon_tariffs", "id", Abonement
+    sync_abon_tariffs
     clean_up "tarif_plans", "id", Tariff
     sync_tariffs
     clean_up "groups", "gid", Group
@@ -103,6 +105,24 @@ module Daemon
     end
   end
 
+  # Sync abon tariffs
+  def self.sync_abon_tariffs
+    query = @current_conn.query("
+      SELECT `id`, `name`, `period`, `price`, `payment_type`
+      FROM `abon_tariffs`")
+    query.each do |res|
+      abon = Abonement.where(id: res.delete("id")).first_or_create
+      abon.with_lock do
+        res.each do |k, v|
+          k = "cost" if k == "price"
+          #v = !!v if k == "payment_type"
+          abon.method("#{k}=".to_sym).call(v)
+        end
+        save_with_log abon, abon.id
+      end
+    end
+  end
+
   # Sync user billing data
   def self.sync_billing user, res
     # Build user billing
@@ -128,12 +148,23 @@ module Daemon
     }
   end
 
+  # Sync abon_users_list
+  def self.sync_abon_users_list user, res
+    query = @current_conn.query("SELECT * FROM `abon_user_list` WHERE `uid`=#{user.id}")
+    query.each do |au|
+      date = au["date"] ? { created_at: au["date"] } : {}
+      new_au = AbonementUser.new({user_id: user.id, abonement_id: au["tp_id"]}.merge(date))
+      new_au.save
+    end
+  end
+
 
   # Sync users
   def self.sync_users offset = 0, limit = nil
     limit ||= USERS_LIMIT_PER_TRANSACTION
     query = @current_conn.query("
-      SELECT u.*, u.id as user_name, upi.*, dvm.*, dvm.registration as dv_reg, `bills`.*, `bills`.`registration` as `bill_reg`, `bills`.id as bill_id,
+      SELECT u.*, u.id as user_name, upi.*, dvm.*, dvm.registration as dv_reg,
+              `bills`.*, `bills`.`registration` as `bill_reg`, `bills`.id as bill_id,
       INET_NTOA(dvm.ip) as `ip`, INET_NTOA(dvm.netmask) as `netmask`
       FROM `users` u
       LEFT JOIN `users_pi` upi ON (u.uid=upi.uid)
@@ -147,6 +178,7 @@ module Daemon
         user.created_at = DateTime.strptime(res["registration"], "%Y-%m-%d").to_time rescue Time.now
         user.tariff = Tariff.where(remote_id: res["tp_id"].to_i).first_or_create
         user.group = Group.where(id: res["gid"].to_i).first_or_create
+
         user.username = res["user_name"]
         user.registration = res["dv_reg"]
         user.initials = res["fio"]
@@ -160,7 +192,7 @@ module Daemon
         %w(email disable ip speed netmask address_street address_build address_flat).each do |f|
           user.method("#{f}=".to_sym).call(res[f])
         end
-        %w(billing payments fees day_stats).each { |table| self.method("sync_#{table}".to_sym).call(user, res) }
+        %w(billing payments fees day_stats abon_users_list).each { |table| self.method("sync_#{table}".to_sym).call(user, res) }
 
         save_with_log user, res["uid"]
       end

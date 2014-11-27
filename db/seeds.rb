@@ -31,13 +31,22 @@ tariffs.each { |tariff|
 puts "Creating groups"
 group_max_id = DB.query("SELECT (MAX(`gid`)+ 1) as `id` FROM `groups`").first["id"] || 0
 20.times do
-  name = [Faker::Hacker.adjective.capitalize, Faker::Name.title.pluralize].join " "
+  name = [rand(500).to_s, Faker::Hacker.adjective.capitalize, Faker::Name.title.pluralize].join " "
   DB.query("INSERT INTO `groups`(`gid`,`name`, `descr`)
 													VALUES(#{group_max_id},
                                 '#{ name }', '#{ Faker::Lorem.paragraph }')")
   group_max_id += 1
 end
 group_ids = DB.query("SELECT GROUP_CONCAT(gid SEPARATOR ', ') as gids FROM groups;").first["gids"].split(", ")
+
+# Create Abon tariffs
+puts "Creating abon tariffs (whatever that is)"
+20.times do
+  name = [rand(500).to_s, Faker::Hacker.adjective, Faker::Hacker.abbreviation, Faker::Hacker.noun.capitalize].join " "
+  DB.query("INSERT INTO `abon_tariffs`(`name`, `period`, `price`, `payment_type`)
+													VALUES('#{ name }', '#{ (rand(98) + 1).to_s }', '#{Faker::Commerce.price}', 0)")
+end
+atar_ids = DB.query("SELECT GROUP_CONCAT(id SEPARATOR ', ') as ids FROM abon_tariffs;").first["ids"].split(", ")
 
 # Users list
 USERS = ["leo", "lesya", "ruslan", "gena"]
@@ -91,10 +100,17 @@ ENV["numb"].to_i.times { |i|
 		while start.to_time.to_i < Time.now.to_i
 			DB.query("INSERT INTO `day_stats` SET `uid`=#{user_id}, `started`='#{start.strftime("%Y-%m-%d %H:%M:%S")}', `day`='#{start.strftime("%d")}', `month`='#{start.strftime("%m")}', `year`='#{start.strftime("%Y")}', `c_acct_input_octets`=#{rundom_number(rand(3))}, `c_acct_output_octets`=#{rundom_number(rand(3))}, `c_acct_input_gigawords`=#{rundom_number(rand(3))}, `c_acct_output_gigawords`=#{rundom_number(rand(3))}, `s_acct_input_octets`=#{rundom_number(rand(3))}, `s_acct_output_octets`=#{rundom_number(rand(3))}, `s_acct_input_gigawords`=#{rundom_number(rand(3))}, `s_acct_output_gigawords`=#{rundom_number(rand(3))}, `lupd`=#{rundom_number(rand(6))}")
 			start += 1.day
-		end
+    end
+
+    # Add user abon tariffs
+    atar_ids.each do |aid|
+      next if [true, false].sample
+      DB.query("INSERT INTO `abon_user_list`
+              SET `uid`=#{user_id}, `tp_id`=#{aid}, `date`='#{rand(100).hours.ago}'")
+    end
 	}
 }
-# # Add abon tariffs
+# Add abon tariffs
 # abon_tariffs = Array.new
 # puts "Creating abon tariffs"
 # DB.query("SELECT GROUP_CONCAT(`name` SEPARATOR '||') as `names`, GROUP_CONCAT(`id` SEPARATOR ',') as `ids` FROM `abon_tariffs`").each { |q|
