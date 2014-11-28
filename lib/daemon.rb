@@ -51,7 +51,7 @@ module Daemon
         model = self.const_get(klass)
         item = model.where(billing_id: result["bill_id"], remote_id: result["id"]).first_or_create
         item.with_lock do
-          #item.created_at = DateTime.strptime(result["date"], "%Y-%m-%d %H:%M:%S").to_time rescue Time.now - 50.years.ago
+          item.created_at = result["date"] #DateTime.strptime(result["date"], "%Y-%m-%d %H:%M:%S").to_time
           item.amount = result["sum"]
           item.deposit = result["last_deposit"]
           item.description = result["dsc"]
