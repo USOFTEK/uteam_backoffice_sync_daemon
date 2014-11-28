@@ -3,11 +3,9 @@ source "https://rubygems.org/"
 #add gems from tracker
 begin
   DIR = File.dirname(__FILE__)
-  file_path = File.expand_path(
-  							DIR.scan(/^\/var\/www\/cabinet/i).empty? ?
-										File.join(DIR, "..", "goliath", "tracker", "Gemfile") :
-                    File.join(DIR, "..", "..", "..", "tracker", "current", "Gemfile")
-							)
+  file_path = DIR.scan(/^\/var\/www\/cabinet/i).empty? ?
+                    File.expand_path(File.join(DIR, "..", "Meta", "cabina", "tracker", "Gemfile")) :
+                    "/var/www/cabinet/tracker/current/Gemfile"
   puts file_path
   eval(IO.read(file_path), binding)
 rescue Errno::ENOENT
