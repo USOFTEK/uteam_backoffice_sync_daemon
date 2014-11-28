@@ -49,7 +49,7 @@ module Daemon
                         WHERE `uid`='#{user.id}' AND `bill_id`='#{result["bill_id"]}'"
       @current_conn.query(q).each do |result|
         model = self.const_get(klass)
-        item = model.where(billing_id: result["id"], remote_id: result["id"]).first_or_create
+        item = model.where(billing_id: result["bill_id"], remote_id: result["id"]).first_or_create
         item.with_lock do
           #item.created_at = DateTime.strptime(result["date"], "%Y-%m-%d %H:%M:%S").to_time rescue Time.now - 50.years.ago
           item.amount = result["sum"]
@@ -65,6 +65,7 @@ module Daemon
   private
 
   def self.clean_up table, field, klass
+    puts "Cleaning up #{table}"
     query = @current_conn.query("SELECT GROUP_CONCAT(`#{field}` SEPARATOR ',') AS `records` FROM `#{table}`")
     return true if query.first["records"].empty?
     ids = query.first["records"].split(",")
@@ -174,6 +175,7 @@ module Daemon
       LIMIT #{offset},#{limit}")
     query.each do |res|
       user = User.where(id: res["uid"]).first_or_create
+      puts "Syncing user #{res["uid"]}"
       user.with_lock do
         user.created_at = DateTime.strptime(res["registration"], "%Y-%m-%d").to_time rescue Time.now
         user.tariff = Tariff.where(remote_id: res["tp_id"].to_i).first_or_create

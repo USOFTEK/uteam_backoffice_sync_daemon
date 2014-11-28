@@ -90,7 +90,6 @@ ENV["numb"].to_i.times { |i|
 		# Add user fees
 		puts "Creating user fees"
 		100.times do
-      p "Billing id: #{billing_id}"
       DB.query("INSERT INTO `fees` SET `date`='#{Faker::Date.between(Date.parse(user_created_at), Time.now).to_time.to_s.gsub(/( \+\.*)$/i, "")}', `sum`=#{Faker::Commerce.price}, `dsc`=\"#{Faker::Lorem.sentence}\", `ip`=INET_ATON('#{Faker::Internet.ip_v4_address}'), `last_deposit`='#{Faker::Commerce.price}', `uid`=#{user_id}, `aid`=1, `bill_id`=#{billing_id}")
     end
 		# Add user payments
