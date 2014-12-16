@@ -9,7 +9,7 @@ settings = {
     development: {
         path_to_tracker: File.expand_path(File.join(File.dirname(__FILE__), "..", "..", "goliath", "tracker")),
         sql_user: "root",
-        sql_pass: "123456789"
+        sql_pass: ""
     },
     staging: {
         path_to_tracker: "/var/www/cabinet/tracker/current",

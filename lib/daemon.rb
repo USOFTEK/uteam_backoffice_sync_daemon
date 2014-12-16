@@ -33,6 +33,8 @@ module Daemon
     sync_tariffs
     clean_up "users", "uid", User
     sync_users
+    # Sync bonuses
+    sync_bonuses
   end
 
   # Dynamically sync user fees and payments
@@ -96,20 +98,29 @@ module Daemon
     }
   end
 
-  # Sync user network statistic data
-  def self.sync_day_stats user, res
-    query = @current_conn.query("SELECT *, SUM(`c_acct_input_gigawords` * 4294967296 + `c_acct_input_octets`) as sent, 
-                                      SUM( `c_acct_output_gigawords` * 4294967296 + `c_acct_output_octets`  ) as received 
-                                      FROM `day_stats` WHERE `uid`=#{user.id} GROUP BY year,month,day")
-    query.each { |stat|
-      record = NetworkActivity.where(user_id: user.id, per: Date.parse("#{stat["year"]}-#{stat["month"]}-#{stat["day"]}").to_time).first_or_create
-      record.sent = stat["sent"]
-      record.received = stat["received"]
-      record.save! if record.valid?
+  # Sync user bonuses (with friends)
+  def self.sync_bonuses
+    @current_conn.query("SELECT * FROM `p_resseler`").each { |rec|
+      # Skip if user doesn't exists
+      next unless User.exists?(rec["uid"])
+      user = User.find(rec["uid"])
+      user.update_attributes(bonus_percent: rec["percent"])
+      friends = @current_conn.query("SELECT * FROM `p_ress_users` WHERE `rid`=#{rec["rid"]}")
+      friends.each { |friend|
+        next unless User.exists?(friend["uid"])
+        # Add friend to user if not exists
+        user.teams.find_or_create_by(friend_id: friend["uid"]) unless user.friends.exists?(friend["uid"])
+        user_friend = User.find(friend["uid"])
+        bonus_pays = @current_conn.query("SELECT * FROM `p_ress_pays` WHERE `uid`=#{user_friend.id} AND `rid`=#{rec["rid"]}")
+        bonus_pays.each { |pay|
+          bonus_pay = BonusPay.find_or_create_by(user_id: user_friend.id, day: Date.new(pay["year"].to_i, pay["month"].to_i, pay["day"].to_i))
+          bonus_pay.update_attributes(amount: pay["sum"], paid: !pay["status"].zero?)
+        }
+      }
     }
   end
 
-  # Sync user sms data
+  # Sync user network statistic data
   def self.sync_day_stats user, res
     query = @current_conn.query("SELECT *, SUM(`c_acct_input_gigawords` * 4294967296 + `c_acct_input_octets`) as sent, 
                                       SUM( `c_acct_output_gigawords` * 4294967296 + `c_acct_output_octets`  ) as received 
@@ -145,7 +156,7 @@ module Daemon
         user.password = res["password"] if user.new_record?
         user.primary_phone = Phone.find_or_create_by(user_id: user.id, number: res["phone"].to_s)
         user.primary_phone.update_attributes(is_main: true)
-        user_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^+?3?8(050|066|068|095|099|096|093|063|067)/i).empty?
+        user.primary_phone.update_attributes(is_mobile: false) if res["phone"].to_s.scan(/^+?3?8(050|066|068|095|099|096|093|063|067)/i).empty?
         user.mobile_phone = Phone.find_or_create_by(user_id: user.id, number: res["sms_phone"])
         user.mobile_phone.update_attributes(is_mobile: true)
         user.disable = !res["disable"].to_i.zero?

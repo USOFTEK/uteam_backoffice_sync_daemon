@@ -28,20 +28,25 @@ tariffs.each { |tariff|
 }
 # Users list
 USERS = ["leo", "lesya", "ruslan", "gena"]
-ENV["numb"].to_i.times { |i|
-	# Creating a user
-	USERS.each { |username|
-		username += "-#{i}"
+# Creating a user
+USERS.each { |username|
+	current_user_name = username
+	# Saved user ids
+	user_ids = Array.new
+	ENV["numb"].to_i.times { |i|
+		username = "#{current_user_name}-#{i}"
 		puts "Creating a user: #{username}"
 		user_created_at = (Date.today - rand(3).month).to_s
 		DB.query("INSERT INTO `users`(`id`,`credit`,`registration`,`password`,`disable`) 
 														VALUES('#{username}','#{Faker::Commerce.price}','#{user_created_at}',
 															'#{ENV["password"]}','#{[1,0].sample}')")
 		user_id = DB.last_id
+		# Save user ids
+		user_ids << user_id
 		# Create billing for user
 		puts "Creating bills"
 		DB.query("INSERT INTO `bills`(`deposit`, `uid`, `registration`) 
-														VALUES('#{Faker::Commerce.price}', #{user_id}, '#{user_created_at}')")
+							VALUES('#{Faker::Commerce.price}', #{user_id}, '#{user_created_at}')")
 		billing_id = DB.last_id
 		# Add to user
 		DB.query("UPDATE `users` SET `bill_id`=#{billing_id} WHERE `uid`=#{user_id}")
@@ -79,6 +84,23 @@ ENV["numb"].to_i.times { |i|
 			DB.query("INSERT INTO `day_stats` SET `uid`=#{user_id}, `started`='#{start.strftime("%Y-%m-%d %H:%M:%S")}', `day`='#{start.strftime("%d")}', `month`='#{start.strftime("%m")}', `year`='#{start.strftime("%Y")}', `c_acct_input_octets`=#{rundom_number(rand(3))}, `c_acct_output_octets`=#{rundom_number(rand(3))}, `c_acct_input_gigawords`=#{rundom_number(rand(3))}, `c_acct_output_gigawords`=#{rundom_number(rand(3))}, `s_acct_input_octets`=#{rundom_number(rand(3))}, `s_acct_output_octets`=#{rundom_number(rand(3))}, `s_acct_input_gigawords`=#{rundom_number(rand(3))}, `s_acct_output_gigawords`=#{rundom_number(rand(3))}, `lupd`=#{rundom_number(rand(6))}")
 			start += 1.day
 		end
+	}
+	puts "Generating resseler associations"
+	user_id = user_ids.shift
+	percent = rand(1..10)
+	# Add user friends and bonuses
+	DB.query("INSERT INTO `p_resseler` SET `uid`=#{user_id}, `percent`='#{percent}'")
+	ress_id = DB.last_id
+	DB.query("INSERT INTO `p_ress_users`(`rid`,`uid`) 
+												VALUES(#{ress_id},#{user_ids.join("), (#{ress_id},")})") unless user_ids.empty?
+	user_ids.each { |i|
+		5.times {
+			DB.query("INSERT INTO `p_ress_pays` 
+								SET `rid`=#{ress_id}, `uid`=#{i}, 
+									`year`=#{Time.now.year}, `month`=#{(Time.now - rand(10).months).month}, 
+									`day`=#{(Time.now - rand(35).days).day}, `sum`='#{(Faker::Commerce.price * (percent.to_f / 100)).round(2)}', 
+									`status`=#{[0,1,1].sample}")
+		}
 	}
 }
 # # Add abon tariffs
