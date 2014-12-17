@@ -6,6 +6,8 @@ development:
       # Defines the name of the default database that Mongoid can connect to.
       # (required).
       database: sync_daemon_development
+      username: "test"
+      password: "123456"
       # Provides the hosts the default session can connect to. Must be an array
       # of host:port pairs. (required)
       hosts:
@@ -59,6 +61,8 @@ test:
   sessions:
     default:
       database: sync_daemon_test
+      username: "test"
+      password: "123456"
       hosts:
         - localhost:27017
       options:
