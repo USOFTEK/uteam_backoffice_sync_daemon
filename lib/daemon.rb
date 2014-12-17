@@ -69,7 +69,7 @@ module Daemon
   def self.clean_up table, field, klass
     puts "Cleaning up #{table}"
     query = @current_conn.query("SELECT GROUP_CONCAT(`#{field}` SEPARATOR ',') AS `records` FROM `#{table}`")
-    return true if query.first["records"].empty?
+    return true unless query.first["records"]
     ids = query.first["records"].split(",")
     klass.where.not(id: ids).each(&:delete)
   end
