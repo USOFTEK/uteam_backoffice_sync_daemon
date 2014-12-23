@@ -1,10 +1,12 @@
 source "https://rubygems.org/"
 
+ruby "2.1.0"
+
 #add gems from tracker
 begin
   DIR = File.dirname(__FILE__)
   file_path = DIR.scan(/^\/var\/www\/cabinet/i).empty? ?
-                    File.expand_path(File.join(DIR, "..", "goliath", "tracker", "Gemfile")) :
+                    File.expand_path(File.join(DIR, "..", "ucab", "tracker", "Gemfile")) :
                     "/var/www/cabinet/tracker/current/Gemfile"
   puts file_path
   eval(IO.read(file_path), binding)
@@ -30,3 +32,5 @@ gem "mongoid"
 
 # MongoidLocker
 gem "mongoid-locker"
+
+gem "capistrano"
