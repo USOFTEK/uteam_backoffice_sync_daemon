@@ -1,6 +1,6 @@
 # Sync Daemon
 
-  Daemon to synchronize database from billing to backoffice(BO). Currently works in one direction: from billing to BO.
+  Daemon to synchronize database from billing to backoffice(BO) and from BO to billing. To see what data will be synchronized from tracker to billing please see a `sync_user_profile` method in 'lib/daemon.rb'
 
 ## Install
 
@@ -18,3 +18,11 @@
 >  2. Run `rake db:migrate`.
 >
 >  To delete database: `rake db:drop`.
+
+## Run
+
+ To run daemon just type `ruby run.rb`. If there where any problems in starting daemon it will be displayed in console.
+
+# WARNING
+
+ This daemon was tested on faked data and on a small copy of real billing database, so there is a probability that it will fail to start for the first time. If it happens please feel free to contact developers for details.

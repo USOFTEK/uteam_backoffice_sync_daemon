@@ -16,7 +16,7 @@ module Daemon
   end
 
   # Sync data from tracker
-  def self.sync_from_traker
+  def self.sync_from_tracker
     connect_to_dbs unless @current_conn
     # Sync user model
     sync_update_users

@@ -18,7 +18,7 @@ require_relative "lib/daemon"
 
 # File.new("LOCK", "w").close
 
-Daemon.sync_from_traker
+Daemon.sync_from_tracker
 
 Daemon.sync_to_tracker
 
